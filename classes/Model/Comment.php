@@ -93,4 +93,19 @@ class Model_Comment extends ORM{
 		);
 	}
 
+	/**
+	 * 后台评论搜索时的下拉框
+	 */
+	public function status_search(){
+		return Form::select('status',
+			array(
+				''=>__('Please select'),
+				self::audited => __('audited'),
+				self::unaudited => __('unaudited')
+			),
+			null,
+			array('class' => 'input-small')
+		);
+	}
+
 }
