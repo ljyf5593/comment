@@ -1,7 +1,25 @@
 <?php defined('SYSPATH') or die('No direct script access.');?>
 <div class="comment-list">
-    <dl id="commont_1">
-        <dt><span><a href="#">游客</a></span>2012-9-20 13:37<span class="pull-right"><a href="#">删除</a></span></dt>
-        <dd>这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论这是一条评论</dd>
+	<?php
+	foreach($list as $item):
+    $author_id = $item->author_id;
+	?>
+    <dl id="comment_<?php echo $item->pk();?>">
+        <dt>
+			<span>
+            <?php
+            if(intval($author_id) > 0){
+                echo HTML::anchor('/jiaolian/user/'.$author_id, $item->author);
+            } else {
+                echo $item->author;
+            }
+            ?>
+            </span><?php echo date('Y-m-d H:i',	$item->dateline);?>
+			<?php if($user_id AND $user_id == $author_id):?>
+			<span class="pull-right"><a href="<?php echo URL::site('/comment/delete/'.$item->pk())?>">删除</a></span>
+			<?php endif;?>
+		</dt>
+        <dd><?php echo $item->content;?></dd>
     </dl>
+	<?php endforeach;?>
 </div>

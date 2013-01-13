@@ -3,30 +3,40 @@
  * 评论前台控制器
  *
  * @author  Jie.Liu (ljyf5593@gmail.com)
- * @Id $Id: comment.php 33 2012-06-29 07:32:34Z Jie.Liu $
+ * @Id $Id: Comment.php 33 2012-06-29 07:32:34Z Jie.Liu $
  */
 class Controller_Comment extends Controller{
-
-	private $content = '';
 
 	public function action_create(){
 
 		if (HTTP_Request::POST == $this->request->method()){
 
 			try {
-				$comment = ORM::factory('comment')->values($this->request->post())->save();
-				$json['isSucceed'] = TRUE;
-				$comment->content = nl2br($comment->content);
-				$json['comment'] = $comment->object();
 
-			}catch (ORM_Validation_Exception $e) {
+				if($user = Auth::instance()->get_user()){ //如果评论时用户已经登录
+					$user_info = array(
+						'author_id' => $user->pk(),
+						'author' => $user->realname ? $user->realname : $user->username,
+					);
+				} else {
+					$user_info = array(
+						'author_id' => 0,
+						'author' => '游客',
+					);
+				}
 
-				$json['message'] = $e->errors('comment');
+				ORM::factory('comment')->values($this->request->post()+$user_info)->save();
 
+				$this->request->redirect($this->request->referrer());
+
+			} catch (ORM_Validation_Exception $e) {
+
+				$message = $e->errors('validate');
+                $this->showmessage(current($message), 'error');
 			}
-			echo json_encode($json);
+
 		} else {
-			$this->content = View::factory('comment/create');
+			$this->content = View::factory('comment/create')->set($this->request->query());
 		}
 	}
 
@@ -38,40 +48,47 @@ class Controller_Comment extends Controller{
 
 		$id = intval($this->request->param('id'));
 		$model = $this->request->param('model');
+		$comment = ORM::factory('comment');
 		if ($id AND !empty($model)){
 
-			$json = $this->getCommentList($model, $id);
-			$json['isSucceed'] = TRUE;
-			echo json_encode($json);
+			$comment->where('targettype', '=', $model)->where('targetid', '=', $id)
+                    ->where('status', '=', Model_Comment::audited);
+
 		}
 
-		$this->content = View::factory('comment/list');
+		$pagination = new Pagination(array(
+			'total_items'=>$comment->reset(FALSE)->count_all(),
+		));
+
+		// 获取当前登录用户，如果存在的话
+		if($user = Auth::instance()->get_user()){
+			$user_id = $user->pk();
+		} else {
+			$user_id = 0;
+		}
+
+		$this->content = View::factory('comment/list')->set(array(
+			'pagination' => $pagination,
+			'user_id' => $user_id,
+			'list' => $comment->limit($pagination->items_per_page)->offset($pagination->offset)->find_all(),
+		));
+	}
+
+	public function action_delete(){
+		$id = intval($this->request->param('id'));
+		$user = Auth::instance()->get_user();
+		if($user){
+			$comment = new Model_Comment(array('id' => $id, 'author_id' => $user->pk()));
+			if($comment->loaded()){
+				$comment->delete();
+				$this->request->redirect($this->request->referrer());
+			}
+		} else {
+			$this->request->redirect('/login');
+		}
 	}
 
 	public function after(){
 		$this->response->body($this->content);
 	}
-
-	private function getCommentList($model, $id){
-		$ormModel = ORM::factory($model, $id);
-		$ormModel->comments->where('targettype', '=', $model)
-			->where('status', '=', 1);
-
-		$pagination = new Pagination(array(
-			'total_items'=>$ormModel->comments->count_all(),
-		));
-
-		$comments = $ormModel->comments->limit($pagination->items_per_page)->offset($pagination->offset)->order_by('dateline', 'DESC')->find_all();
-		$commentList = array();
-		if (count($comments)){
-			foreach ($comments as $comment){
-				$commentList[] = $comment->object();
-			}
-		}
-		$result = array();
-		$result['pagination'] = $pagination->render();
-		$result['commentList'] = $commentList;
-		return $result;
-	}
-
 }
