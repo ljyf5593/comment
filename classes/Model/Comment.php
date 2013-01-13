@@ -88,6 +88,7 @@ class Model_Comment extends ORM{
         return HTML::anchor($base_url.$this->targetid.'#comment_'.$this->pk(), UTF8::substr($this->content, 0, 50), array('target' => '_blank', 'title' => $this->content));
     }
 
+<<<<<<< HEAD
     public function status_show(){
         return Form::select('status',
             array(
@@ -100,4 +101,21 @@ class Model_Comment extends ORM{
         );
     }
     
+=======
+	/**
+	 * 后台评论搜索时的下拉框
+	 */
+	public function status_search(){
+		return Form::select('status',
+			array(
+				''=>__('Please select'),
+				self::audited => __('audited'),
+				self::unaudited => __('unaudited')
+			),
+			null,
+			array('class' => 'input-small')
+		);
+	}
+
+>>>>>>> 4671838994fc1fadfc750bd0b6dc8b9946a51213
 }
